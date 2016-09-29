@@ -17,10 +17,15 @@ def fix_base(fix_environ):
     def _fix_android_environ():
         import os
 
-        lib_path = "/system/lib"
+        if "LD_LIBRARY_PATH" not in os.environ:
+            os.environ["LD_LIBRARY_PATH"] = "."
+
+        lib64_path = ""
+        lib32_path = os.pathsep + "/system/lib"
         if os.path.exists("/system/lib64"):
-            lib_path = "/system/lib64" + os.pathsep + lib_path
-        os.environ["LD_LIBRARY_PATH"] = os.environ.get("LD_LIBRARY_PATH", ".") + os.pathsep + lib_path
+            lib64_path = os.pathsep + "/system/lib64"
+
+        os.environ["LD_LIBRARY_PATH"] += lib64_path + lib32_path
 
     def _fix_android_plat():
         from distutils.spawn import find_executable
