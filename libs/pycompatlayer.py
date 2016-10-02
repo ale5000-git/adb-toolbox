@@ -7,7 +7,7 @@ It is still under development, not all functions are supported.
 
 import sys
 
-__version__ = "0.0.10-beta"
+__version__ = "0.0.10"
 __author__ = "ale5000"
 __copyright__ = "Copyright (C) 2016, ale5000"
 __license__ = "LGPLv3+"
