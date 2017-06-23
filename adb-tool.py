@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """ADB Toolbox"""
 
 import sys
@@ -183,6 +184,7 @@ print_(os.linesep+" *** OS:", get_OS(), "("+sys.platform+")")
 print_(" *** Selected device:", chosen_device)
 print_(" *** Action:", action)
 
+
 def uninstall_gapps():
     enable_device_writing(chosen_device)
     removal_list = [
@@ -199,6 +201,7 @@ def uninstall_gapps():
     subprocess.check_output(["adb", "uninstall", "com.google.android.gms"])
     subprocess.check_call(["adb", "shell", "rm", "-f", "/system/app/YouTube.apk"])
     subprocess.check_call(["adb", "shell", "rm", "-f"] + removal_list)
+
 
 if action == 1:
     uninstall_gapps()
