@@ -9,10 +9,22 @@ It is still under development, not all functions are supported.
 
 import sys
 
-__version__ = "0.0.10-2"
+__version__ = "0.0.10.dev4"
 __author__ = "ale5000"
 __copyright__ = "Copyright (C) 2016-2017, ale5000"
 __license__ = "LGPLv3+"
+
+
+class _Internal:
+    """For internal use only."""
+
+    class ExtStr(str):
+        def format(format_spec, value):  # Largely incomplete
+            format_spec = format_spec.replace("{}", "%s").replace("{:", "%").replace("}", "")
+            return format_spec % (value, )
+
+        def __format__(value, format_spec):  # Largely incomplete
+            return "%"+format_spec % (value, )
 
 
 def set_utf8_default():
@@ -52,6 +64,14 @@ def fix_base(fix_environ):
 
     if fix_environ and sys.platform == "linux-android":
         _fix_android_environ()
+
+    if 'maxsize' not in sys.__dict__:
+        sys.maxsize = 2147483647  # Assume this if not known (for now)
+
+    # Useful custom variables
+    sys.python_bits = 32
+    if sys.maxsize > 2**32:
+        sys.python_bits = 64
 
 
 def fix_builtins(override_debug=False):
@@ -100,9 +120,14 @@ def fix_builtins(override_debug=False):
         my_list.sort()
         return my_list
 
+    def _format(value, format_spec):
+        return value.__format__(format_spec)
+
     if builtins_dict.get(__name__, False):
         raise RuntimeError(__name__+" already loaded")
 
+    if 'format' not in str.__dict__:
+        override_dict["str"] = _Internal.ExtStr
     # Function 'input'
     if builtins_dict.get("raw_input") is not None:
         override_dict["input"] = builtins_dict.get("raw_input")
@@ -121,6 +146,9 @@ def fix_builtins(override_debug=False):
     # Function 'sorted'
     if builtins_dict.get("sorted") is None:
         override_dict["sorted"] = _sorted
+    # Function 'format'
+    if builtins_dict.get("format") is None:
+        override_dict["format"] = _format
 
     override_dict[__name__] = True
     builtins_dict.update(override_dict)
@@ -131,16 +159,35 @@ def fix_subprocess(override_debug=False, override_exception=False):
     """Activate the subprocess compatibility."""
     import subprocess
 
-    class ExtendedCalledProcessError(subprocess.CalledProcessError):
-        """This exception is raised when a process run by check_call() or check_output() returns a non-zero exit status."""
+    class CalledProcessError(Exception):
+        """Raised when a process run by check_call() or check_output()
+        returns a non-zero exit status."""
+
+        def __init__(self, returncode, cmd, output=None, stderr=None):
+            self.returncode = returncode
+            self.cmd = cmd
+            self.output = output
+            self.stdout = output
+            self.stderr = stderr
+
+    if "CalledProcessError" not in subprocess.__dict__:
+        subprocess.CalledProcessError = CalledProcessError
+
+    class ExtCalledProcessError(subprocess.CalledProcessError):
+        """Raised when a process run by check_call() or check_output()
+        returns a non-zero exit status."""
+
         def __init__(self, returncode, cmd, output=None, stderr=None):
             try:
-                super(ExtendedCalledProcessError, self).__init__(returncode=returncode, cmd=cmd, output=output, stderr=stderr)
+                super(ExtCalledProcessError, self).__init__(returncode=returncode,
+                                                            cmd=cmd, output=output, stderr=stderr)
             except TypeError:
                 try:
-                    super(ExtendedCalledProcessError, self).__init__(returncode=returncode, cmd=cmd, output=output)
+                    super(ExtCalledProcessError, self).__init__(returncode=returncode,
+                                                                cmd=cmd, output=output)
                 except TypeError:
-                    super(ExtendedCalledProcessError, self).__init__(returncode=returncode, cmd=cmd)
+                    super(ExtCalledProcessError, self).__init__(returncode=returncode,
+                                                                cmd=cmd)
                     self.output = output
                 self.stdout = output
                 self.stderr = stderr
@@ -158,7 +205,7 @@ def fix_subprocess(override_debug=False, override_exception=False):
             cmd = kwargs.get("args")
             if cmd is None:
                 cmd = args[0]
-            raise ExtendedCalledProcessError(returncode=ret_code, cmd=cmd, output=stdout_data)
+            raise ExtCalledProcessError(returncode=ret_code, cmd=cmd, output=stdout_data)
         return stdout_data
 
     try:
@@ -172,3 +219,4 @@ def fix_all(override_debug=False, override_all=False):
     fix_base(True)
     fix_builtins(override_debug)
     fix_subprocess(override_debug, override_all)
+    return True
