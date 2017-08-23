@@ -20,18 +20,18 @@ class _Internal:
 
     class ExtStr(str):
         def format(format_spec, value):  # Largely incomplete
-            format_spec = format_spec.replace("{}", "%s").replace("{:", "%").replace("}", "")
+            format_spec = format_spec.replace("{}", "%s").replace("{0}", "%s").replace("{:", "%").replace("}", "")
             return format_spec % (value, )
 
         def __format__(value, format_spec):  # Largely incomplete
             return "%"+format_spec % (value, )
 
 
-def set_utf8_default():
-    if sys.getdefaultencoding() != "utf-8":
+def set_default_encoding(encoding="utf-8"):
+    if sys.getdefaultencoding() != encoding:
         try:
             reload(sys)
-            sys.setdefaultencoding("utf-8")
+            sys.setdefaultencoding(encoding)
         except NameError:
             pass
 
